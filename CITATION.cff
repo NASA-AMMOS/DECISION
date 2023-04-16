@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Lightholder"
+  given-names: "Jack"
+  orcid: "https://orcid.org/0000-0001-9811-2227"
+- family-names: "Wronkiewicz"
+  given-names: "Mark"
+  orcid: "https://orcid.org/0000-0002-6521-3256"
+- family-names: "Lee"
+  given-names: "Jake"
+  orcid: "https://orcid.org/0000-0002-2838-2878"
+- family-names: "Mandrake"
+  given-names: "Lukas"
+  orcid: "https://orcid.org/00000-0002-5233-2029"
+title: "Data-driven Efficient Configuration of Instruments by Scientific Intent for Operational Needs"
+version: 1.0.0
+date-released: 2023-04-16
+url: "https://github.com/NASA-AMMOS/DECISION/"
