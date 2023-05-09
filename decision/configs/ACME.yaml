@@ -1,0 +1,124 @@
+metrics:
+  default:
+    - 'Maximize Recall'
+    - 'Maximize Precision'
+  all:
+    - 'Maximize Recall'
+    - 'Maximize Precision'
+    - 'Minimize False Positives'
+    - 'Maximize F1 Score'
+    - 'Minimize Runtime'
+    - 'Minimize Data Volume'
+    - 'Minimize OSIA RAM'
+parameters:
+  - block:
+    name: "Peak Definition Window"
+    description: "For each identified peak in the mass spectrometry data, ACME calculates peak characteristics within a rectangular region of migration time and mass per charge. This window should be large enough to fit all expected peak shapes, which can vary depending on signal intensity and migration time. Yet, this window should be as small as possible to minimize sensitivity to noise and avoid also including other nearby peaks."
+    parameters:
+        -
+          name: "Center X"
+          description: "Window width in time units to consider peak signal."
+          min_range: 11
+          max_range: 171
+          min_default: 11
+          max_default: 171
+          type: "range"
+          step: 1
+        -
+          name: "Window X"
+          description: "Window width in time units to consider peak background."
+          min_range: 111
+          max_range: 201
+          min_default: 111
+          max_default: 201
+          type: "range"
+          step: 1
+        -
+          name: "Window Y"
+          description: "Window height in mass-per-charge units to consider peak signal."
+          min_range: 7
+          max_range: 21
+          min_default: 7
+          max_default: 21
+          type: "range"
+          step: 1
+        -
+          name: "Denoise X"
+          description: "Width of the median denoising filter applied before peak detection."
+          min_range: 31
+          max_range: 151
+          min_default: 31
+          max_default: 151
+          type: "range"
+          step: 1
+  - block:
+    name: "Peak Detection Configuration"
+    description: "ACME detects peak signals using a difference-of-gaussians filter, then applies basic thresholds to remove false positives. These parameters define these methods."
+    parameters:
+        -
+          name: "Sigma"
+          description: "Standard deviation of the Difference-of-Gaussian denoising filter."
+          min_range: 1
+          max_range: 5
+          min_default: 1
+          max_default: 5
+          type: "range"
+          step: 1
+        -
+          name: "Sigma Ratio"
+          description: "Ratio between the subtracted gaussians of the Difference-of-Gaussian denoising filter."
+          min_range: 1.1
+          max_range: 5
+          min_default: 1.1
+          max_default: 5
+          type: "range"
+          step: 0.1
+        -
+          name: "Minimum Filtered Threshold"
+          description: "Baseline filter threshold on filtered data."
+          min_range: 0
+          max_range: 100
+          min_default: 0
+          max_default: 100
+          type: "range"
+          step: 1
+        -
+          name: "Minimum Post Convolution SNR"
+          description: "Signal-to-Noise ratio threshold for peak candidate detection after convolution."
+          min_range: 5
+          max_range: 15
+          min_default: 5
+          max_default: 15
+          type: "range"
+          step: 1
+        -
+          name: "Minimum Peak Volume"
+          description: "Minimum peak volume threshold for false positive rejection."
+          min_range: 0
+          max_range: 1500
+          min_default: 0
+          max_default: 1500
+          type: "range"
+          step: 1
+  - block:
+    name: "Constants"
+    description: "Fixed values that should not be optimized."
+    parameters:
+        -
+          name: "X Sigmas"
+          description: "Number of standard deviations around the peak center."
+          min_range: 0
+          max_range: 6
+          min_default: 3
+          max_default: 3
+          type: "constant"
+          step: 0
+        -
+          name: "Maximum Masses Distance"
+          description: "Maximum difference between mass of known compound and found peak in [amu]."
+          min_range: 0
+          max_range: 1
+          min_default: 0.5
+          max_default: 0.5
+          type: "constant"
+          step: 0

@@ -1,0 +1,49 @@
+
+# Dakota Input File: dakota_input.tmp
+
+environment
+  tabular_data
+    tabular_data_file = 'dakota_data.dat'
+
+method
+  coliny_ea
+    max_iterations = 1000000
+    max_function_evaluations = 1000000
+    seed = 11011011
+    population_size = 50
+    fitness_type merit_function
+    mutation_type offset_normal
+    mutation_rate 1.0
+    crossover_type two_point
+    crossover_rate 0.0
+    replacement_type chc = 10
+
+model
+  single
+
+variables
+  continuous_design = 2
+  descriptors       'sigma'   'sigma_ratio'
+  lower_bounds         9           11
+  upper_bounds         10            12  
+
+  discrete_design_range = 7
+  descriptors      'center_x'     'window_x'    'window_y'    'denoise_x'    'min_filtered_threshold'   'min_SNR_conv'   'min_peak_volume'
+  lower_bounds         1           3            5            7            13            15            17
+  upper_bounds         2            4           6            8            14            16            18
+
+interface
+  input_filter = 'dakota/dakota_input_manager.sh'
+  analysis_drivers = 'dakota/acme_docker_trigger.sh'
+  output_filter = 'dakota/dakota_output_manager.sh'
+    system
+
+responses
+  objective_functions = 2
+  descriptors = 'Metric_2'
+                'Metric_1'
+  sense = 'met'
+          'met'
+  no_gradients
+  no_hessians
+
