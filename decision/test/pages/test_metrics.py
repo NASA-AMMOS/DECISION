@@ -9,24 +9,32 @@ from contextvars            import copy_context
 from dash._callback_context import context_value
 from dash._utils            import AttributeDict
 
-from decision.pages.metrics import update_dakota_metrics_and_params
+from decision.pages.metrics import callback
+from decision.pages.metrics import initial_callback
+from decision.pages.metrics import update_runtime_estimate
+from decision.pages.metrics import get_param_max_ranges
 
 
-def test_update_dakota_metrics_and_params():
-        '''Test updating Dakota input file with values from metrics page slider bars'''
-        update_dakota_metrics_and_params(["Metric 1", "Metric 2"], 
-                                         [1,2], 
-                                         [3,4], 
-                                         [5,6], 
-                                         [7,8], 
-                                         [9,10], 
-                                         [11,12], 
-                                         [13,14], 
-                                         [15,16], 
-                                         [17,18], 
-                                         [19,20], 
-                                         [21,22],
-                                         "dakota_input.template",
-                                         'test/data/dakota_metrics_params.tmp')
+def test_callback():
 
-        assert filecmp.cmp('test/data/dakota_metrics_params_ref.tmp', 'test/data/dakota_metrics_params.tmp') == True
+	data, alerts = callback(['Maximize Recall', 'Maximize Precision'])
+	assert data['metrics'] == ['Maximize Recall', 'Maximize Precision']
+	assert alerts == []
+
+def test_initial_callback():
+
+	metrics = None
+	config_store = {'config_name': 'ACME', 'config_path': 'configs/ACME.yaml'}
+	blocks, metrics_list = initial_callback(metrics, config_store)
+
+def test_update_runtime_estimate():
+
+	slider_values = [[11, 171], [111, 201], [7, 21], [31, 151], [1, 5], [1.1, 5], [0, 100], [5, 15], [0, 1500], [3, 3], [0.5, 0.5]]
+	config_store = {'config_name': 'ACME', 'config_path': 'configs/ACME.yaml'}
+	progress_bar, data = update_runtime_estimate(slider_values, config_store)
+	assert data['parameters'] == [[11, 171], [111, 201], [7, 21], [31, 151], [1, 5], [1.1, 5], [0, 100], [5, 15], [0, 1500], [3, 3], [0.5, 0.5]]
+
+def test_get_param_max_ranges():
+
+	param_ranges = get_param_max_ranges("configs/ACME.yaml")
+	assert param_ranges == [[11, 171], [111, 201], [7, 21], [31, 151], [1, 5], [1.1, 5], [0, 100], [5, 15], [0, 1500], [0, 6], [0, 1]]

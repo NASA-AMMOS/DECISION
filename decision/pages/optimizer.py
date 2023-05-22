@@ -266,7 +266,7 @@ def on_data(ts, store, n):
 @callback(Output('placeholderStopButton', 'children'),
           Input('stop_button', 'n_clicks')
 )
-def callbackButton(button_press):
+def dakota_shutdown(button_press):
 
     if button_press is None:
         raise PreventUpdate
