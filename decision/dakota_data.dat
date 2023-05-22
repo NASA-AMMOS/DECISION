@@ -1,0 +1,6 @@
+%eval_id interface sigma          sigma_ratio    center_x       window_x       window_y       denoise_x      min_filtered_threshold min_SNR_conv   min_peak_volume Maximize_Recall 
+1        NO_ID      3              3.05           70             186            14             96             50             10             750            -0.7139643075  
+2        NO_ID      4.459795782    1.868016863    31             172            14             106            92             5              1180           -0.6971656217  
+3        NO_ID      2.002870959    4.270898872    101            189            12             101            89             12             983            -0.7048611111  
+4        NO_ID      3.264871481    2.752606606    123            190            16             123            29             10             1409           -0.6868154436  
+5        NO_ID      3.912280477    3.730528776    116            186            12             108            100            13             424            -0.6667780749  

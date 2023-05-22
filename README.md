@@ -8,6 +8,7 @@ DECISION uses Conda to maintain dependancy versions.  Follow the instruction [`h
 Run the follow commands to recursively collect and update submodules.
 ```bash
 cd DECISION
+git submodule init
 git submodule update --recursive
 ```
 If encountering an error, download the submodule directly from the repository (https://github.com/JPLMLIA/OWLS-Autonomy.git) and put it in `decision/OSIA/OWLS-Autonomy/`
