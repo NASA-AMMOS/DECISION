@@ -25,6 +25,13 @@ Default RAM allocated to Docker containers can be too low if you're attempting t
 ## DECISION Demo Data
 Demo data to use with DECISION can be found at https://ml.jpl.nasa.gov/projects/decision/ACME_Demo_Data.zip. Unzip this repository and place it in DECISION/decision/data/.
 
+## Testing DECISION
+Verify installation by running DECISION unit tests.  This is accomplished with the following commands. Test coverage reports will be generated in docs/coverage_report/. View docs/coverage_report/index.html for a summary of testing results.
+```bash
+cd DECISION/decision/
+pytest -rP --ignore=OSIA --disable-warnings --cov=decision --cov-report html:docs/coverage_report test/ -v
+```
+
 ## Running DECISION
 Start DECISION using the following commands.
 ```bash
