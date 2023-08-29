@@ -20,14 +20,13 @@ jobs:
       # Initialize git submodule
       - name: Initialize Git Submodule
         run: |
-          cd DECISION
           git submodule init
           git submodule update --recursive
 
       # Build the Docker image
       - name: Build Docker image
         run: |
-          cd DECISION/decision/OSIA/OWLS-Autonomy/
+          cd decision/OSIA/OWLS-Autonomy/
           docker build . -f Dockerfile_ACME --tag owls-autonomy-acme:v1
 
     # (Optional) Push Docker image to a registry, for example, GitHub Container Registry
