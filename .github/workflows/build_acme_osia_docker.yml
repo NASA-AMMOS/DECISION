@@ -10,6 +10,7 @@ on:
 
 jobs:
   build:
+    permissions: write-all
     runs-on: ubuntu-latest  # The type of runner that the job will run on
 
     steps:
