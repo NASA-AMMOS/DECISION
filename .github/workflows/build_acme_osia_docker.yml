@@ -33,5 +33,6 @@ jobs:
       - name: Push Docker image
         run: |
           echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-          docker tag owls-autonomy-acme:v1 ghcr.io/${{ github.repository }}:v1
-          docker push ghcr.io/${{ github.repository }}:v1
+          REPO_LOWER=$(echo ${{ github.repository }} | awk '{print tolower($0)}')
+          docker tag owls-autonomy-acme:v1 ghcr.io/$REPO_LOWER:v1
+          docker push ghcr.io/$REPO_LOWER:v1
