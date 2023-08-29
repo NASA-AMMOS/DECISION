@@ -32,7 +32,7 @@ DECISION utilizes Dakota for parameter optimization. Follow instructions at http
 ## Testing DECISION
 Verify installation by running DECISION unit tests.  This is accomplished with the following commands. Test coverage reports will be generated in docs/coverage_report/. View docs/coverage_report/index.html for a summary of testing results.
 ```bash
-cd DECISION/decision/
+cd DECISION/decision/  
 pytest -rP --ignore=OSIA --disable-warnings --cov=decision --cov-report html:docs/coverage_report test/ -v
 ```
 

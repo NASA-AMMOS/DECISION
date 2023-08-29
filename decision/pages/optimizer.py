@@ -74,8 +74,8 @@ layout = html.Div([
                     dbc.Button("Run", outline=True, color="success", className="run", size='sm', id='start_button', style={"margin-bottom": "10px", "margin-top": "20px"}),
                     dbc.Button("Stop", outline=True, color="danger", className="stop", size='sm', id='stop_button'),
                 ]),
-                
-                html.Br(),             
+
+                html.Br(),
                 html.H3("System Notifications"),
                 html.Br(),
                 html.Div(id='optimizer-alerts'),
@@ -104,8 +104,8 @@ layout = html.Div([
 
 @callback(Output('optimizer-store', 'data'),
           Input('max_iterations', 'value'),
-          Input('max_function_evaluations', 'value'), 
-          Input('population_size', 'value'), 
+          Input('max_function_evaluations', 'value'),
+          Input('population_size', 'value'),
           Input('mutation_rate', 'value'),
           Input('crossover_rate', 'value'),
           Input('replacement_size', 'value'),
@@ -114,16 +114,16 @@ layout = html.Div([
           Input('metrics-store', 'data'),
           prevent_initial_call=True,
 )
-def callbackSliders(max_iterations, 
-                    max_function_evaluations, 
-                    population_size, 
-                    mutation_rate, 
-                    crossover_rate, 
-                    replacement_size, 
+def callbackSliders(max_iterations,
+                    max_function_evaluations,
+                    population_size,
+                    mutation_rate,
+                    crossover_rate,
+                    replacement_size,
                     replacement_type,
                     parameters_store,
                     metrics_store):
-    
+
     if parameters_store['parameters'] == []:
         raise PreventUpdate
 
@@ -179,7 +179,7 @@ def callbackSliders(max_iterations,
     text_file = open('dakota.input', "w")
     text_file.write(output_text)
     text_file.close()
-    
+
     logging.info("Optimizer store updated")
     return ''
 
@@ -196,8 +196,14 @@ def callbackButton(n_clicks, data):
     if n_clicks == 1:
         # Run Dakota (hard coded demo for now)
         logging.info("Lanching Dakota")
-        dakota_process = subprocess.Popen(["dakota", "-i", "dakota.input", "-o", "dakota.out", ">", "dakota.stout"], shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        logging.info(f"Dakota running with PID: {dakota_process.pid}")
+        if 'DAKOTA_ENGINE' not in os.environ or os.environ['DAKOTA_ENGINE'] == "local":
+            dakota_process = subprocess.Popen(["dakota", "-i", "dakota.input", "-o", "dakota.out", ">", "dakota.stout"], shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            logging.info(f"Dakota running with PID: {dakota_process.pid}")
+        elif os.environ['DAKOTA_ENGINE'] == "docker":
+            dakota_process = subprocess.Popen(["docker", "run", "dakota", "-i", "dakota.input", "-o", "dakota.out"], shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            logging.info(f"Dakota running with PID: {dakota_process.pid}")
+        elif os.environ['DAKOTA_ENGINE'] == 'ecs':
+            None
 
     data = data or {'clicks': 0}
     data['clicks'] = data['clicks'] + 1
@@ -252,7 +258,7 @@ def on_data(ts, store, n):
             fig.write_image(f"plots/metric_{x}.png")
             dynamic_plots.append(dcc.Graph(id='metrics-graph'+str(i),figure=fig))
             i = i + 1
-            
+
         time.sleep(1)
         dakota_status_text = f"Dakota Status: {dakota_running} (Iteration: {len(y)})"
 

@@ -1,0 +1,38 @@
+name: Build ACME OSIA Docker Container
+
+on:
+  push:
+    branches:
+      - main  # Trigger the workflow on push to main, you can also specify other branches
+  pull_request:
+    branches:
+      - main  # Also trigger on pull requests to main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest  # The type of runner that the job will run on
+
+    steps:
+      # Checkout the code
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      # Initialize git submodule
+      - name: Initialize Git Submodule
+        run: |
+          cd DECISION
+          git submodule init
+          git submodule update --recursive
+
+      # Build the Docker image
+      - name: Build Docker image
+        run: |
+          cd DECISION/decision/OSIA/OWLS-Autonomy/
+          docker build . -f Dockerfile_ACME --tag owls-autonomy-acme:v1
+
+    # (Optional) Push Docker image to a registry, for example, GitHub Container Registry
+      - name: Push Docker image
+        run: |
+          echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          docker tag owls-autonomy-acme:v1 ghcr.io/${{ github.repository }}:v1
+          docker push ghcr.io/${{ github.repository }}:v1
