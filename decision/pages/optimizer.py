@@ -1,3 +1,4 @@
+import boto3
 import dash
 import time
 import subprocess
@@ -203,7 +204,8 @@ def callbackButton(n_clicks, data):
             dakota_process = subprocess.Popen(["docker", "run", "dakota", "-i", "dakota.input", "-o", "dakota.out"], shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             logging.info(f"Dakota running with PID: {dakota_process.pid}")
         elif os.environ['DAKOTA_ENGINE'] == 'ecs':
-            None
+            body = ""
+            send_sqs_message(os.getenv("SQS_QUEUE_URL", body))
 
     data = data or {'clicks': 0}
     data['clicks'] = data['clicks'] + 1
@@ -285,6 +287,17 @@ def dakota_shutdown(button_press):
     return ''
 
 
+def send_sqs_message(queue_url, message_body):
+    # Create an SQS client
+    sqs_client = boto3.client('sqs')
 
+    # Send the message
+    response = sqs_client.send_message(
+        QueueUrl=queue_url,
+        MessageBody=message_body
+    )
+
+    # Print the response
+    print(response)
 
 
