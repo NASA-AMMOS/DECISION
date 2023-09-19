@@ -51,3 +51,4 @@ dependencies:
       - tenacity
       - werkzeug
       - zipp
+      - kaleido
