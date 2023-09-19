@@ -1,0 +1,38 @@
+name: Build Decision UI Docker Container
+
+on:
+  push:
+    branches:
+      - main  # Trigger the workflow on push to main, you can also specify other branches
+  pull_request:
+    branches:
+      - main  # Also trigger on pull requests to main
+
+jobs:
+  build:
+    permissions: write-all
+    runs-on: ubuntu-latest  # The type of runner that the job will run on
+
+    steps:
+      # Checkout the code
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      # Initialize git submodule
+      - name: Initialize Git Submodule
+        run: |
+          git submodule init
+          git submodule update --recursive
+
+      # Build the Docker image
+      - name: Build Docker image
+        run: |
+          docker build . -f Dockerfile.dakota --tag dakota:v1
+
+    # (Optional) Push Docker image to a registry, for example, GitHub Container Registry
+      - name: Push Docker image
+        run: |
+          echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          REPO_LOWER=$(echo ${{ github.repository }} | awk '{print tolower($0)}')
+          docker tag dakota:v1 ghcr.io/$REPO_LOWER:dakotav1
+          docker push ghcr.io/$REPO_LOWER:dakotav1
