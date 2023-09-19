@@ -1,4 +1,4 @@
-name: Build ACME OSIA Docker Container
+name: Build Decision UI Docker Container
 
 on:
   push:
