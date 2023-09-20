@@ -177,7 +177,7 @@ def callbackSliders(max_iterations,
 
     if(os.getenv("DAKOTA_ENGINE", "") == "ecs"):
         html_template = 'dakota_efs.template'
-        
+
     template = template_env.get_template(html_template)
     output_text = template.render(update_dict)
 
