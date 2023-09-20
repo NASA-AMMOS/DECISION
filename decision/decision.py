@@ -75,9 +75,10 @@ app.layout = html.Div([
 if __name__ == '__main__':
 
     # TODO - put in config during generalization activity
-    pickle_procesing_path = "data/ACME_Demo_Data/tmp/"
+    basepath = os.getenv("DAKOTA_STAGE_PATH", "")
+    pickle_procesing_path = basepath+"data/ACME_Demo_Data/tmp/"
     rebuild_folder(pickle_procesing_path)
-    results_path = "data/ACME_Demo_Data/ACME_preds/"
+    results_path = basepath+"data/ACME_Demo_Data/ACME_preds/"
     rebuild_folder(results_path)
 
     logging.basicConfig(filename='decision_log.txt', 
