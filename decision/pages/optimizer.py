@@ -206,7 +206,7 @@ def callbackButton(n_clicks, data):
         elif os.environ['DAKOTA_ENGINE'] == 'ecs':
             # TODO dakota.out to efs
             # TODO dakota.input to efs
-            body = "run_dakota"
+            body = '{"task":"run_dakota"}'
             send_sqs_message(os.getenv("SQS_QUEUE_URL"), body)
 
     data = data or {'clicks': 0}
