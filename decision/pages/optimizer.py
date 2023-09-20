@@ -174,6 +174,10 @@ def callbackSliders(max_iterations,
     template_env = jinja2.Environment(loader=template_loader)
 
     html_template = 'dakota.template'
+
+    if(os.getenv("DAKOTA_ENGINE", "") == "ecs"):
+        html_template = 'dakota_efs.template'
+        
     template = template_env.get_template(html_template)
     output_text = template.render(update_dict)
 
