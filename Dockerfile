@@ -17,3 +17,4 @@ RUN apt update && apt install -y git && git submodule init && git submodule upda
 WORKDIR /work/decision/
 
 CMD [ "bash", "-c", "source activate decision && python decision.py" ]
+#CMD [ "bash","-c", "source activate decision && gunicorn --timeout 1000 --workers=1 --threads=1 -b 0.0.0.0:8000 app:server"]
