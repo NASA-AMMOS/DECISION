@@ -1,4 +1,4 @@
-name: Build Decision UI Docker Container
+name: Build Decision Dakota Docker Container
 
 on:
   push:
