@@ -236,12 +236,20 @@ def on_data(ts, store, n):
 
     try:
 
-        process = subprocess.Popen(['pgrep', '-f', 'dakota'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out, err = process.communicate()
-        if(len(out) == 0):
-            dakota_running = "Stopped"
-        else:
-            dakota_running = "Running"
+        # TODO Check if ECS dakota container is running
+        if 'DAKOTA_ENGINE' not in os.environ or os.getenv("DAKOTA_ENGINE") == "local":
+            process = subprocess.Popen(['pgrep', '-f', 'dakota'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            out, err = process.communicate()
+            if(len(out) == 0):
+                dakota_running = "Stopped"
+            else:
+                dakota_running = "Running"
+        elif os.getenv("DAKOTA_ENGINE") == "docker":
+            # TODO Look up running dakota docker
+            None
+        elif os.getenv("DAKOTA_ENGINE") == "ecs":
+            # TODO look up running dakota ecs
+            None
 
         with open(os.getenv("DAKOTA_STAGE_PATH", "")+"dakota.out") as file:
             lines = [line.rstrip() for line in file]
@@ -282,6 +290,7 @@ def dakota_shutdown(button_press):
         raise PreventUpdate
 
     logging.info("Attempting to shut down Dakota")
+    # TODO shutdown for ECS and docker
     process = subprocess.Popen(['pkill', '-9', '-f', 'dakota'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = process.communicate()
     logging.info(f"Kill log: {out}")
