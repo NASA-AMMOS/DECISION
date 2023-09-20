@@ -24,6 +24,7 @@ dependencies:
   - xz
   - zlib
   - pip:
+      - boto3==1.28.51
       - click==8.1.3
       - dash==2.8.1
       - dash-bootstrap-components==1.4.0
