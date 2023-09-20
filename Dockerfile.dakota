@@ -10,6 +10,7 @@ RUN mkdir -p ~/miniconda3 && \
 COPY envs/environment.yml /tmp
 COPY entrypoint.sh /entrypoint.sh
 COPY decision/dakota /root/
+COPY decision/dakota /input
  
 RUN ~/miniconda3/bin/conda update -n base -c defaults conda && ~/miniconda3/bin/conda env create -f /tmp/environment.yml
 
