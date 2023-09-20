@@ -204,8 +204,10 @@ def callbackButton(n_clicks, data):
             dakota_process = subprocess.Popen(["docker", "run", "dakota", "-i", "dakota.input", "-o", "dakota.out"], shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             logging.info(f"Dakota running with PID: {dakota_process.pid}")
         elif os.environ['DAKOTA_ENGINE'] == 'ecs':
-            body = ""
-            send_sqs_message(os.getenv("SQS_QUEUE_URL", body))
+            # TODO dakota.out to efs
+            # TODO dakota.input to efs
+            body = "run_dakota"
+            send_sqs_message(os.getenv("SQS_QUEUE_URL"), body)
 
     data = data or {'clicks': 0}
     data['clicks'] = data['clicks'] + 1
