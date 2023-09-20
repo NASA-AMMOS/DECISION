@@ -9,7 +9,8 @@ RUN mkdir -p ~/miniconda3 && \
 
 COPY envs/environment.yml /tmp
 COPY entrypoint.sh /entrypoint.sh
-
+COPY decision/dakota /root/
+ 
 RUN ~/miniconda3/bin/conda update -n base -c defaults conda && ~/miniconda3/bin/conda env create -f /tmp/environment.yml
 
 RUN mkdir /data && cd /data && curl -L https://github.com/snl-dakota/dakota/releases/download/v6.18.0/dakota-6.18.0-public-rhel8.Linux.x86_64-cli.tar.gz --output dakota.tar.gz && \
