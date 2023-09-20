@@ -177,7 +177,7 @@ def callbackSliders(max_iterations,
     template = template_env.get_template(html_template)
     output_text = template.render(update_dict)
 
-    text_file = open('dakota.input', "w")
+    text_file = open(os.getenv("DAKOTA_STAGE_PATH", "")+'dakota.input', "w")
     text_file.write(output_text)
     text_file.close()
 
@@ -243,7 +243,7 @@ def on_data(ts, store, n):
         else:
             dakota_running = "Running"
 
-        with open("dakota.out") as file:
+        with open(os.getenv("DAKOTA_STAGE_PATH", "")+"dakota.out") as file:
             lines = [line.rstrip() for line in file]
 
             split_index = [idx for idx, s in enumerate(lines) if 'End DAKOTA input file' in s][0]
