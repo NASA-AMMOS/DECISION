@@ -1,3 +1,4 @@
+# TODO make this url dynamic
 QUEUE_URL="https://sqs.us-east-1.amazonaws.com/295293350525/terraform-20230919220938849500000002"
 MESSAGE_BODY="{\"task\":\"run_payload\"}"
 TARGET_FILE="/efs/data/ACME_Demo_Data/ACME_eval_logs_master/acme_eval_sweep_verbose.csv"
