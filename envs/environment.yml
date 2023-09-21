@@ -9,7 +9,7 @@ dependencies:
   - certifi
   - libcxx
   - libffi
-  - kaleido
+  - python-kaleido
   - ncurses
   - openssl
   - pip
