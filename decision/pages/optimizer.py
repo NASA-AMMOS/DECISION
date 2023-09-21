@@ -1,3 +1,4 @@
+import boto3
 import dash
 import time
 import subprocess
@@ -74,8 +75,8 @@ layout = html.Div([
                     dbc.Button("Run", outline=True, color="success", className="run", size='sm', id='start_button', style={"margin-bottom": "10px", "margin-top": "20px"}),
                     dbc.Button("Stop", outline=True, color="danger", className="stop", size='sm', id='stop_button'),
                 ]),
-                
-                html.Br(),             
+
+                html.Br(),
                 html.H3("System Notifications"),
                 html.Br(),
                 html.Div(id='optimizer-alerts'),
@@ -104,8 +105,8 @@ layout = html.Div([
 
 @callback(Output('optimizer-store', 'data'),
           Input('max_iterations', 'value'),
-          Input('max_function_evaluations', 'value'), 
-          Input('population_size', 'value'), 
+          Input('max_function_evaluations', 'value'),
+          Input('population_size', 'value'),
           Input('mutation_rate', 'value'),
           Input('crossover_rate', 'value'),
           Input('replacement_size', 'value'),
@@ -114,16 +115,16 @@ layout = html.Div([
           Input('metrics-store', 'data'),
           prevent_initial_call=True,
 )
-def callbackSliders(max_iterations, 
-                    max_function_evaluations, 
-                    population_size, 
-                    mutation_rate, 
-                    crossover_rate, 
-                    replacement_size, 
+def callbackSliders(max_iterations,
+                    max_function_evaluations,
+                    population_size,
+                    mutation_rate,
+                    crossover_rate,
+                    replacement_size,
                     replacement_type,
                     parameters_store,
                     metrics_store):
-    
+
     if parameters_store['parameters'] == []:
         raise PreventUpdate
 
@@ -173,13 +174,17 @@ def callbackSliders(max_iterations,
     template_env = jinja2.Environment(loader=template_loader)
 
     html_template = 'dakota.template'
+
+    if(os.getenv("DAKOTA_ENGINE", "") == "ecs"):
+        html_template = 'dakota_efs.template'
+
     template = template_env.get_template(html_template)
     output_text = template.render(update_dict)
 
-    text_file = open('dakota.input', "w")
+    text_file = open(os.getenv("DAKOTA_STAGE_PATH", "")+'dakota.input', "w")
     text_file.write(output_text)
     text_file.close()
-    
+
     logging.info("Optimizer store updated")
     return ''
 
@@ -196,8 +201,17 @@ def callbackButton(n_clicks, data):
     if n_clicks == 1:
         # Run Dakota (hard coded demo for now)
         logging.info("Lanching Dakota")
-        dakota_process = subprocess.Popen(["dakota", "-i", "dakota.input", "-o", "dakota.out", ">", "dakota.stout"], shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        logging.info(f"Dakota running with PID: {dakota_process.pid}")
+        if 'DAKOTA_ENGINE' not in os.environ or os.environ['DAKOTA_ENGINE'] == "local":
+            dakota_process = subprocess.Popen(["dakota", "-i", "dakota.input", "-o", "dakota.out", ">", "dakota.stout"], shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            logging.info(f"Dakota running with PID: {dakota_process.pid}")
+        elif os.environ['DAKOTA_ENGINE'] == "docker":
+            dakota_process = subprocess.Popen(["docker", "run", "dakota", "-i", "dakota.input", "-o", "dakota.out"], shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            logging.info(f"Dakota running with PID: {dakota_process.pid}")
+        elif os.environ['DAKOTA_ENGINE'] == 'ecs':
+            # TODO dakota.out to efs
+            # TODO dakota.input to efs
+            body = '{"task":"run_dakota"}'
+            send_sqs_message(os.getenv("SQS_QUEUE_URL"), body)
 
     data = data or {'clicks': 0}
     data['clicks'] = data['clicks'] + 1
@@ -226,14 +240,22 @@ def on_data(ts, store, n):
 
     try:
 
-        process = subprocess.Popen(['pgrep', '-f', 'dakota'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out, err = process.communicate()
-        if(len(out) == 0):
-            dakota_running = "Stopped"
-        else:
-            dakota_running = "Running"
+        # TODO Check if ECS dakota container is running
+        if 'DAKOTA_ENGINE' not in os.environ or os.getenv("DAKOTA_ENGINE") == "local":
+            process = subprocess.Popen(['pgrep', '-f', 'dakota'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            out, err = process.communicate()
+            if(len(out) == 0):
+                dakota_running = "Stopped"
+            else:
+                dakota_running = "Running"
+        elif os.getenv("DAKOTA_ENGINE") == "docker":
+            # TODO Look up running dakota docker
+            None
+        elif os.getenv("DAKOTA_ENGINE") == "ecs":
+            # TODO look up running dakota ecs
+            None
 
-        with open("dakota.out") as file:
+        with open(os.getenv("DAKOTA_STAGE_PATH", "")+"dakota.out") as file:
             lines = [line.rstrip() for line in file]
 
             split_index = [idx for idx, s in enumerate(lines) if 'End DAKOTA input file' in s][0]
@@ -252,7 +274,7 @@ def on_data(ts, store, n):
             fig.write_image(f"plots/metric_{x}.png")
             dynamic_plots.append(dcc.Graph(id='metrics-graph'+str(i),figure=fig))
             i = i + 1
-            
+
         time.sleep(1)
         dakota_status_text = f"Dakota Status: {dakota_running} (Iteration: {len(y)})"
 
@@ -272,6 +294,7 @@ def dakota_shutdown(button_press):
         raise PreventUpdate
 
     logging.info("Attempting to shut down Dakota")
+    # TODO shutdown for ECS and docker
     process = subprocess.Popen(['pkill', '-9', '-f', 'dakota'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = process.communicate()
     logging.info(f"Kill log: {out}")
@@ -279,6 +302,17 @@ def dakota_shutdown(button_press):
     return ''
 
 
+def send_sqs_message(queue_url, message_body):
+    # Create an SQS client
+    sqs_client = boto3.client('sqs')
 
+    # Send the message
+    response = sqs_client.send_message(
+        QueueUrl=queue_url,
+        MessageBody=message_body
+    )
+
+    # Print the response
+    print(response)
 
 

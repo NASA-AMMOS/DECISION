@@ -135,7 +135,11 @@ def callbackExperimentStoreUpdate(selected_experiments):
         product_ID = df['ID'][selected_experiments[x]]
 
         # TODO - put in config during generalization activity
-        shutil.copy(os.path.join("data/ACME_Demo_Data/pickles",f"{product_ID}.pickle"),os.path.join("data/ACME_Demo_Data/tmp", f"{product_ID}.pickle"))
+        basepath = ""
+        if(os.getenv("DAKOTA_STAGE_PATH", "") != ""):
+            basepath = os.getenv("DAKOTA_STAGE_PATH")
+
+        shutil.copy(os.path.join(basepath, "data/ACME_Demo_Data/pickles",f"{product_ID}.pickle"),os.path.join(basepath, "data/ACME_Demo_Data/tmp", f"{product_ID}.pickle"))
 
         experiment_names.append(product_ID)
 
