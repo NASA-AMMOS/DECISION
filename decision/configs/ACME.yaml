@@ -63,7 +63,7 @@ parameters:
           min_default: 1
           max_default: 5
           type: "range"
-          step: 1
+          step: 0.1
         -
           name: "Sigma Ratio"
           description: "Ratio between the subtracted gaussians of the Difference-of-Gaussian denoising filter."
@@ -122,3 +122,6 @@ parameters:
           max_default: 0.5
           type: "constant"
           step: 0
+data:
+  label_extension: "csv"
+  data_extension: "pickle"

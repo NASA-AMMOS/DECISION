@@ -1,5 +1,6 @@
 import dash
 import os
+import yaml
 import shutil
 
 from dash.exceptions import PreventUpdate
@@ -14,50 +15,42 @@ from dash            import dcc
 import dash_bootstrap_components as dbc
 import pandas                    as pd
 
-
-dash.register_page(__name__, title="Database")
-
-df = pd.read_csv("experiments.csv")
-
-layout = html.Div([
-
-    # TODO - figure out better solution to this. These 9 ids are pre-declarations of ids used on the optimizer
-    #           page.  Since the metrics-store is updated here, this triggers the optimizer page callback, which
-    #           has metrics-store as an input.  This causes a callback warning, since these ids haven't been declared
-    #           yet.  Pre-declaring them here to avoid the callback warning.  Seems to be a common Dash issue.
-    dcc.Store(id='start_button_memory'),
-    html.P(id='interval-component'),
-    html.P(id='plots'),
-    html.P(id='dakota-status'),
-    html.Div(id='pareto-graph', style= {'display': 'none'}),
-    html.Div(id='cluster-table', style= {'display': 'none'}),
-    html.Div(id='dropdown_col_1', style= {'display': 'none'}),
-    html.Div(id='dropdown_col_2', style= {'display': 'none'}),
-    html.P(id='max_iterations'),
-    html.P(id='max_function_evaluations'),
-    html.P(id='population_size'), 
-    html.P(id='mutation_rate'),
-    html.P(id='crossover_rate'),
-    html.P(id='replacement_size'),
-    html.P(id='replacement_type'),
-    html.Div(id='runtime_bar', style={'display': 'none'}),
+layout = html.Div([html.Div([
 
     html.Div(
         className="db-header",
         children=[
-            
-            html.Div(
-            html.H3("Select Experiments To Optimize With"),
-            ),
-            html.Div(
-                children=[
-                    dbc.Button("Select All Experiments", size='sm', id='select-all-button', style={"margin-right": "5px"}),
-                    dbc.Button("Deselect All Experiments", size='sm', id='deselect-all-button'),
-                    html.Br(),
+            dbc.Col(width=11, children=[
+                html.Div(children=[
+                    html.H3("Select Experiments To Optimize With"),
+                ], style={"float": "left"}),
+            ]),
+            dbc.Col(width=1, style={"align-content": "center", "padding": "0"}, children=[
+                html.Button(id={"type":'modal-button', "name":"Experiments to Optimize With"}, className="modal-button", children=[
+                    html.Img(src="/assets/ModalQuestionMark.svg", style={'width': '24px'}),
+                    ]),
                 ]),
-    ], style={'padding': 10, 'flex': 1, }),
+    ], style={ 'flex': 1, }),
 
-    html.Div(children=[
+    html.Div(id = "table-container", children=[dash_table.DataTable(id="table",)], style={ 'flex': 1,}),  
+    html.Div(
+        children=[
+            dbc.Button("Select All Experiments", size='sm', id='select-all-button', style={"margin-right": "5px"}),
+            dbc.Button("Deselect All Experiments", size='sm', id='deselect-all-button'),
+        ], className="database-buttons"),
+
+], className = "database-container")])
+
+@callback(
+    Output('table-container', 'children'),
+    Input('config-store', 'data')
+)
+def update_table(config_store):
+    config_name = config_store["config_name"]
+    
+    df = pd.read_csv(f"./data/{config_name}_Demo_Data/experiments.csv")
+
+    return [
         dash_table.DataTable(
             id="table",
             columns=[{"name": i, "id": i} for i in df.columns],
@@ -65,82 +58,85 @@ layout = html.Div([
             row_selectable="multi",
             row_deletable=False,
             editable=False,
+            selected_rows = [0],
             filter_action="native",
             sort_action="native",
             style_table={"overflowX": "scroll"},
             style_cell={'overflow': 'hidden',
                         'textOverflow': 'ellipsis',
-                        'maxWidth': 10
-            }),
-
-    ], style={'padding': 20, 'flex': 1, 'font_family': 'Gill Sans'}),  
-
-    html.Br(),
-    html.Br(),
-    html.H3("System Notifications"),
-    html.Br(),
-    html.Div(id='database-alerts'),
-
-], style={'display': 'flex', 'flex-direction': 'column'})
-
+                        'maxWidth': 10,
+                        'textAlign': 'center',
+                        'whiteSpace': 'normal'
+            })
+    ]
 
 @callback(
-    [
-        Output('table', 'selected_rows')
-    ],[
+        Output('table', 'selected_rows'),[
         Input('select-all-button', 'n_clicks'),
-        Input('deselect-all-button', 'n_clicks')
+        Input('deselect-all-button', 'n_clicks'),
+        Input('upload-store', 'data')
     ],[
         State('table', 'data'),
         State('table', 'derived_virtual_data'),
         State('table', 'derived_virtual_selected_rows')
     ]
 )
-def select_all(select_n_clicks, deselect_n_clicks, original_rows, filtered_rows, selected_rows):
+def select_all(select_n_clicks, deselect_n_clicks, upload_store, original_rows, filtered_rows, selected_rows):
+    
+    if upload_store:
+        return upload_store['experiments']
+    
     ctx = dash.callback_context.triggered[0]
     ctx_caller = ctx['prop_id']
     if filtered_rows is not None:
         if ctx_caller == 'select-all-button.n_clicks':
             selected_ids = [row for row in filtered_rows]
-            return [[i for i, row in enumerate(original_rows) if row in selected_ids]]
+            return [i for i, row in enumerate(original_rows) if row in selected_ids]
         if ctx_caller == 'deselect-all-button.n_clicks':
-            return [[]]
+            return []
         raise PreventUpdate
     else:
         raise PreventUpdate
 
 
 @callback(
-    [
         Output('experiments-store', 'data'),
-        Output('database-alerts', 'children')
-    ],[
-        Input('table', 'derived_virtual_selected_rows')
+    [
+        Input('table', 'derived_virtual_selected_rows'),
+        Input('upload-store', 'data')
+    ],
+    [
+        State('table', 'data'),
+        State('config-store', 'data')
     ]
+
 )
-def callbackExperimentStoreUpdate(selected_experiments):
+def callbackExperimentStoreUpdate(selected_experiments, upload_store, table_data, config_store):
+    config_path = config_store['config_path']
+    config_name = config_store['config_name']
 
-    # colors: success (green), warning (yellow), danger (red) 
-    alerts = []
-    experiment_names = []
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
 
-    data = {"experiments": selected_experiments}
+    experiments = upload_store.get("experiments", [])
+    if selected_experiments is not None and selected_experiments != []:
+        experiments.extend([experiment for experiment in selected_experiments if experiment not in experiments])
 
-    if selected_experiments is None or selected_experiments == []:
-        alerts.append(dbc.Alert("Please select at least one observation to optimize with", color="danger"))
-        return data, alerts
+    data = {"experiments": experiments}
 
     # make a copy of each selected observation in tmp directory for processing
-    for x in range(0, len(selected_experiments)):
-        product_ID = df['ID'][selected_experiments[x]]
+    for x in range(0, len(experiments)):
+        product_ID = table_data[x]['ID']
+
+        for key in table_data[x]:
+            if key not in data:
+                data[key] = []
+            data[key].append(table_data[x][key])
+
+        if not os.path.exists(f"data/{config_name}_Demo_Data/tmp"):
+            os.mkdir(f"data/{config_name}_Demo_Data/tmp")
 
         # TODO - put in config during generalization activity
-        shutil.copy(os.path.join("data/ACME_Demo_Data/pickles",f"{product_ID}.pickle"),os.path.join("data/ACME_Demo_Data/tmp", f"{product_ID}.pickle"))
+        shutil.copy(os.path.join(f"data/{config_name}_Demo_Data/{config['data']['data_extension']}s",f"{product_ID}.{config['data']['data_extension']}"),os.path.join(f"data/{config_name}_Demo_Data/tmp", f"{product_ID}.{config['data']['data_extension']}"))
 
-        experiment_names.append(product_ID)
-
-    data['experiment_names'] = experiment_names
-    return data, alerts
-
-
-
+    return data

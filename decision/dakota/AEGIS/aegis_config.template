@@ -1,0 +1,7 @@
+mission: "m20"
+instrument: "ncam"
+smooth_window: {smooth_window}
+sky_sigma_threshold: {sky_sigma_threshold}
+hi_threshold: {hi_threshold}
+lo_threshold: {lo_threshold}
+gap_threshold: {gap_threshold}

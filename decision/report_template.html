@@ -1,17 +1,67 @@
+<style>
+    /* Ensure that no page break happens inside this container */
+    .keep-together {
+        page-break-inside: avoid;
+    }
+    .metrics_table th {
+        text-align: left;
+        padding: 5px;
+    }
+    .metrics_table td {
+        text-align: left;
+        padding: 5px;
+    }
+</style>
 <hr />
-<p style="text-align: center;"><strong>DECISION Analysis Summary</strong></p>
+<h1 style="text-align: center;"><strong>DECISION Analysis Summary</strong></h1>
 <hr />
-<p><b>Selected Parameters:</b></p>
+<div class="keep-together">
+    <h2><b>Data Sets</b></h2>
+    <p>{{experiment_names}}</p>
+</div>
+<div class="keep-together">
+    <h2><b>Optimization Metrics</b></h2>
+    <p>{{optimization_metrics}}</p>
+</div>
+<div class="keep-together">
+<h2><b>Optimization Parameters</b></h2>
 <p>{{parameters}}</p>
-<br>
-<p><b>Performance Metrics:</b></p>
-<p>{{metrics}}</p>
-<br>
-<p><b>Data Utilized:</b></p>
-<p>{{experiment_names}}</p>
-<br><br>
-<center><p><b>Cluster Summary</b></p></center>
-<center><img src="{{plot_path}}/centroids.png"/></center>
-<br><br><br><br><br><br>
-<center><p><b>Metric Convergence</b></p></center>
-{{metric_plots}}
+</div>
+<div class="keep-together">
+    <h2><b>Genetic Algorithm Configuration</b></h2>
+    <p>{{GA_configuration}}</p>
+</div>
+<div class="keep-together">
+    <h2><b>Genetic Algorithm Performance</b></h2>
+    <p>{{GA_performance}}</p>
+</div>
+<div class="keep-together">
+    <h2>Raw Pareto Front Metrics</h2>
+    <p>{{raw_pareto_front_metrics}}</p>
+</div>
+<div class="keep-together">
+    <h2><b>Pareto Front Filtration Histograms</b></h2>
+    <p>{{histograms}}</p>
+</div>
+<div class="keep-together">
+    <h2>Filtered Pareto Front Metrics</h2>
+    <p>{{filtered_pareto_front_metrics}}</p>
+</div>
+<div class="keep-together">
+    <h2><b>Candidate Configurations</b></h2>
+    <p>{{candidate_configurations}}</p>
+</div>
+<div class="keep-together">
+    <h2><b>Selected Configuration</b></h2>
+    <p>{{selected_configuration}}</p>
+</div>
+<div class="keep-together">
+    <h2><b>Configuration Test Image</b></h2>
+    <p>{{test_image}}</p>
+</div>
+<div style="page-break-before: always;"></div>
+<h1 style="text-align: center;">Appendix</h1>
+<h2>Relationship Between Raw Pareto Front Metrics to Parameters</h2>
+<p>{{raw_pareto_front_params}}</p>
+<h2>Relationship Between Filtered Pareto Front Metrics to Parameters</h2>
+<p>{{filtered_pareto_front_params}}</p>

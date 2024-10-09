@@ -1,7 +1,0 @@
-Name,ID,Sample Type,Sample Concentration,Salt Type,Salt Concentration,Elec Type,Elec Concentration,Inj Volume,Number of Labels
-190617_LOD_nosalt_005_Mix25_100nM_60sec_2psi,190617_005,Mix25,0.1,,,Hac,5,21,15
-190617_LOD_nosalt_014_Mix25_1uM_60sec_2psi,190617_014,Mix25,1,,,HAc,5,21,58
-190617_LOD_nosalt_023_Mix25_10uM_60sec_2psi,190617_023,Mix25,10,,,HAc,5,21,88
-190619_RealSamples_002_Mix25_10uM_NaCl3M_20sec_2psi,190619_002,Mix25,1,NaCl,3,HAc,5,7,10
-190619_RealSamples_011_Mix25_90uM_NaCl3M_20sec_2psi,190619_011,Mix25,10,NaCl,3,HAc,5,7,19
-190621_LOD_NaCl_002_Mix25_1uM_NaCl3M_20sec_2psi,190621_002,Mix25,90,NaCl,3,HAc,5,7,19

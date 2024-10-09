@@ -5,6 +5,7 @@ import pdfkit
 import shutil
 import os
 import logging
+import subprocess
 
 from dash                        import dcc, MATCH
 from dash                        import html
@@ -15,77 +16,15 @@ from kneed                       import KneeLocator
 from sklearn.decomposition       import PCA
 from dash.exceptions             import PreventUpdate
 from sklearn.metrics             import pairwise_distances_argmin_min
-from dash_extensions             import Download
-from dash_extensions.snippets    import send_file
+from dash                        import ALL
 
 import plotly.express            as px
 import numpy                     as np
 import pandas                    as pd
 import dash_bootstrap_components as dbc
-import dash_html_components      as html
+import plotly.io                 as pio
 
-def generate_pdf_report(summary_store, experiments_store, dropdown, report_name):
-    '''Generate PDF report from cached products'''
-    options = {
-      "enable-local-file-access": None
-    }
-    plot_path = os.path.dirname(os.path.realpath(__file__)).rstrip("pages") + "plots/"
 
-    # If plot folder does not exist, create it
-    if not os.path.exists(plot_path):
-        os.makedirs(plot_path)
-
-    param_data = np.asarray(summary_store["param_data"], dtype=np.float32)
-    param_names = summary_store["param_names"]
-    closest = summary_store["closest"]
-    cluster_names = summary_store["cluster_names"]
-    metrics_data = np.asarray(summary_store["metrics_data"], dtype=np.float32)
-    metrics_names = summary_store["metrics_names"]
-
-    parameters = ""
-    metrics = ""
-    experiment_names = ""
-    ac_col_dropdown = []
-
-    a_params = param_data[closest[string.ascii_lowercase.index(dropdown.lower())],:]
-    a_metrics = metrics_data[closest[string.ascii_lowercase.index(dropdown.lower())],:]
-    dictA = dict(zip(param_names, a_params))
-    ac_col_dropdown.append(html.Br())
-    for key, value in dictA.items():
-        parameters = parameters + f"&emsp;{key}: {value:0.2f}<br>"
-        ac_col_dropdown.append(html.H5(f"{key}: {value:0.2f}"))
-
-    for m in range(0, len(metrics_names)):
-        metrics = metrics + f"&emsp;{metrics_names[m]}: {a_metrics[m]:0.2f}<br>"
-
-    # build string of html with metric plot source locations for PDF rendering 
-    metric_plots = ""
-    for m in range(0, len(metrics_names)):
-        metric_plots = metric_plots + f'<center><img src="{plot_path}metric_{m}.png"/></center>'
-
-    for experiment in experiments_store["experiment_names"]:
-        experiment_names = experiment_names + f"&emsp;{experiment}<br>"
-
-    # populate contents generated above
-    context = {'parameters': parameters, 
-               'metrics': metrics, 
-               'plot_path': plot_path, 
-               'metric_plots': metric_plots, 
-               'experiment_names': experiment_names}
-
-    template_loader = jinja2.FileSystemLoader('./')
-    template_env = jinja2.Environment(loader=template_loader)
-
-    # render report using context in report_template.html template
-    html_template = 'report_template.html'
-    template = template_env.get_template(html_template)
-    output_text = template.render(context)
-
-    # Generate PDF to be downloaded by download buttons upon press
-    config = pdfkit.configuration(wkhtmltopdf='/usr/local/bin/wkhtmltopdf')
-    pdfkit.from_string(output_text, report_name, configuration=config, css='style.css', options=options)
-
-    return ac_col_dropdown
 
 def get_param_history(dakota_data_file):
 
@@ -124,240 +63,374 @@ def get_param_history(dakota_data_file):
 
     return params, params_np
 
-def optimal_k(points, kmax):
-    sse = []
-    for k in range(1, kmax+1):
-        kmeans = KMeans(n_clusters=k, n_init=10, max_iter=300,  tol=1e-04, random_state=0).fit(points)
-        centroids = kmeans.cluster_centers_
-        pred_clusters = kmeans.predict(points)
-        curr_sse = 0
-    
-        for i in range(0,len(points)):
-            curr_center = centroids[pred_clusters[i]]
-            curr_sse += (points[i, 0] - curr_center[0]) ** 2 + (points[i, 1] - curr_center[1]) ** 2
-      
-        sse.append(curr_sse)
-
-    # TODO - is there an off-by-one error here from starting k at 1?
-    kn = KneeLocator(np.arange(0,len(sse)), sse, curve='convex', direction='decreasing')
-
-    knee = kn.knee
-    if knee is None:
-        logging.info(f"Knee could not be found.  Setting to kmax ({kmax})")
-        knee = kmax # TODO - in cases where knee cannot be found, setting to kmax.  Do we like this?
-
-    if knee < 2:
-        knee = 2 # TODO - We currently auto-populate the two columns with the first two clusters.
-                 #          Cannot have less than two clusters, or things crash.  Can re-evaluate later.
-
-    return knee
-
-dash.register_page(__name__, title="Summary")
-
 layout = html.Div([
-
+    html.Div(className="content-header", children=[
+        dbc.Row(children=[
+            dbc.Col(width=11, children=[
+                html.H1("Optimization Summary")
+                ], style={"padding-left": "8.3%", "text-align": "center"}),
+            dbc.Col(width=1, style={"align-content": "center", "padding": "0"}, children=[
+                html.Button(id={"type":'modal-button', "name":"Optimization Summary"}, className="modal-button", children=[
+                    html.Img(src="/assets/ModalQuestionMark.svg", style={'width': '24px'}),
+                    ]),
+                ]),
+        ]),
+    ], style={"margin-top": "25px"}),
     dbc.Row([
-        dbc.Col(children=[
-
-            html.Div(id='pareto-graph'),
-            html.Div(id='cluster-table'),
-            html.Br(),
-            html.H3("System Notifications"),
-            html.Br(),
-                               
+        dbc.Row(children=[
+            dbc.Col(width=1),
+            dbc.Col(width=4, children=[
+                html.H1("Configuration Search Space", style={"padding-left": "24px"})
+            ]),
+            dbc.Col(width=1, style={"align-content": "center", "text-align": "center", "padding": "0"}, children=[
+                html.Button(id={"type":'modal-button', "name":"Configuration Search Space"}, className="modal-button", children=[
+                    html.Img(src="/assets/ModalQuestionMark.svg", style={"width": "24px"}),
+                ]),
+            ]),
+            dbc.Col(width=5, children=[
+                html.H1("Configuration Database")
+            ], style={"padding-left": "72px"}),
+            dbc.Col(width=1, style={"align-content": "center", "text-align": "center", "padding": "0"}, children=[
+                html.Button(id={"type":'modal-button', "name":"Configuration Database"}, className="modal-button", children=[
+                    html.Img(src="/assets/ModalQuestionMark.svg", style={'width': '24px'}),
+                ]),
+            ]),
         ]),
-        dbc.Col(children=[
-            html.Br(),
-            dcc.Dropdown(id='dropdown_col_1'),
-            html.Div(id='analysis_col_1'),
-            html.Br(),
-            html.Button("Download Configuration", id="button-1"),
-            Download(id="download-button-1")
-        ]),
-        dbc.Col(children=[
-            html.Br(),
-            dcc.Dropdown(id='dropdown_col_2'),
-            html.Div(id='analysis_col_2'),
-            html.Br(),
-            html.Button("Download Configuration", id="button-2"),
-            Download(id="download-button-2")
-        ]),
-    ]),
-])
+        dbc.Row(children=[
+            dbc.Col([
+                        dcc.Dropdown(id='y_axis_dropdown'),
+                ], width=1),
+            dbc.Col([
+                        dcc.Graph(id='scatterplot'),
+                        dcc.Dropdown(id='x_axis_dropdown', style={"margin":"36px auto"}),
+                ], width=5, style={"padding": "36px"}),
+            dbc.Col([
+                html.Br(),
+                html.Div(id = "config-container", children=[
+                    dash_table.DataTable(
+                        id="pareto-table",
+                        columns=[],
+                        data=[],
+                        row_selectable="multi",
+                        row_deletable=False,
+                        editable=False,
+                        selected_rows = [],
+                        filter_action="native",
+                        sort_action="native",
+                        style_table={"overflowX": "auto", 'height':500},
+                        style_cell={
+                                    'textOverflow': 'ellipsis',
+                                    'textAlign': 'center',
+                                    'height': 'auto',
+                                    'whiteSpace': 'normal',
+                                    'minWidth': 250,
+                                    'width': 250,
+                                    'maxWidth': 250,
+                        }
+                    )
+                ], style={"padding-left": "72px"}),
+            ], width=6, style={"padding-left": "0px"}),
+        ])
+    ], className="summary-header"),
 
-@callback([Output('pareto-graph', 'children'),
-           Output('cluster-table', 'children'),
-           Output('summary-store', 'data'),
-           Output('dropdown_col_1', 'options'),
-           Output('dropdown_col_1', 'value'),
-           Output('dropdown_col_2', 'options'),
-           Output('dropdown_col_2', 'value')],
-          [Input('pareto-store', 'data')])
-def populate_pareto_front(pareto_store):
+    html.Br(),
 
-    dynamic_plots = []
-    summary_store = {}
+    html.Div(className="content-header", children=[
+        dbc.Row(children=[
+            dbc.Col(width=11, children=[
+                html.H1("Optimization Histograms")
+                ], style={"padding-left": "8.3%", "text-align": "center"}),
+            dbc.Col(width=1, style={"align-content": "center", "padding": "0"}, children=[
+                html.Button(id={"type":'modal-button', "name":"Optimization Histograms"}, className="modal-button", children=[
+                    html.Img(src="/assets/ModalQuestionMark.svg", style={'width': '24px'}),
+                    ]),
+                ]),
+        ]),
+    ], style={"margin-bottom": "0px"}),
+    dbc.Row([
+        dbc.Col([
+            html.Div(id="histogramBlock", style={'display': 'flex', 'flex-wrap': 'wrap', 'justify-content': 'space-around'}),
+        ]),
+    ], className="summary-histograms"),
+
+    html.Br(),
+
+
+], className = "")
+
+
+@callback(
+    Output('plot-store', 'data'),
+    Input({"type": "metric-slider", "index": ALL}, "value"),
+    Input('pareto-store', 'data'),
+    State('plot-store', 'data'),
+
+)
+def initial_callback(values, pareto_store, plot_store):
+
+    if pareto_store == {}:
+        raise PreventUpdate
 
     metrics = list(pareto_store.keys())
+    metrics = [i.split("_")[1]+" ("+i.split("_")[0]+")" for i in metrics]
 
     ps_np = pareto_store.values()
     ps_np = list(ps_np)
     ps_np = np.array(ps_np).T
 
-    # If plot folder does not exist, create it
-    if not os.path.exists("plots"):
-        os.makedirs("plots")
+    if ps_np.shape[0] == 0:
+        return plot_store      
 
-    if len(ps_np) == 0:
-        raise PreventUpdate
-
-    num_samples, num_metrics = ps_np.shape
-
-    if num_samples <= 2:
-        raise PreventUpdate
-
-    optimal_k_max = 10
-    if num_samples < optimal_k_max:
-        optimal_k_max = num_samples
-
-    k_ = optimal_k(ps_np, optimal_k_max)
-    km = KMeans(n_clusters=k_, init='random', n_init=10, max_iter=300,  tol=1e-04, random_state=0)
-    clusters = km.fit_predict(ps_np)
-    
-    cluster_names = ['A','B','C','D','E','F','G','H','I','J','K','L']
-    cluster_names = cluster_names[:k_]
-
-    viz_metrics = list(pareto_store.keys())
-    viz_metrics = [metric.replace("_", " ") for metric in viz_metrics]
-    df = pd.DataFrame(km.cluster_centers_, columns=viz_metrics)
-    df_tmp = pd.DataFrame({'Cluster Names': cluster_names})
-    df = df_tmp.join(df)
-    df = df.round(2)
-    
     param_names, param_data = get_param_history("dakota_data.dat")
-    closest, _ = pairwise_distances_argmin_min(km.cluster_centers_, ps_np)
 
-    cluster_table = html.Div(children=[dash_table.DataTable(id="cluster-table",
-                                                   columns=[{"name": i, "id": i} for i in df.columns],
-                                                   data=df.to_dict("records"),
-                                                   row_selectable=False,
-                                                   row_deletable=False,
-                                                   editable=False,
-                                                   filter_action="native",
-                                                   sort_action="native",
-                                                   style_table={"overflowX": "auto"},
-                                                   style_cell={'textAlign': 'center'})])
-
-    if num_metrics == 1:
-        fig = px.scatter(x=np.arange(0, len(pareto_store[metrics[0]])), y=pareto_store[metrics[0]], title="Automatic")
-        show_metric = metrics[0].replace("_"," ")
-        fig_title = f"{show_metric} Metric Performance"
-        fig.update_layout(xaxis_title="Iteration", yaxis_title=f"{show_metric}", title={'text': fig_title,'y':0.85,'x':0.5,'xanchor': 'center','yanchor': 'top'})
-        fig.update(layout_coloraxis_showscale=False)
-        dynamic_plots.append(dcc.Graph(id='pareto-graph',figure=fig))
-    elif num_metrics == 2:
-        clusters = list(clusters)
-        clusters = [str(x) for x in clusters]
-        clusters = [x.replace(x, cluster_names[int(x)]) for x in clusters]
-        clusters = np.asarray(clusters)
-
-        # Make centroids a little bigger than the other points
-        size = np.zeros([len(clusters)])
-        size[:] = 1
-        for centroid in closest:
-            size[centroid] = 5
-
-        df_np = np.column_stack([clusters, size, pareto_store[metrics[0]], pareto_store[metrics[1]]])
-        df = pd.DataFrame(df_np, columns=['clusters','size', f'{metrics[0]}', f'{metrics[1]}']) 
-        df = df.astype({'clusters': str, 'size':float, f'{metrics[0]}': float, f'{metrics[1]}': float})
-
-        fig = px.scatter(df, x=f"{metrics[0]}", y=f"{metrics[1]}", color='clusters', size='size', title="Automatic", category_orders={'clusters': np.sort(df['clusters'].unique())})
-        metric_x = metrics[0].replace("_"," ")
-        metric_y = metrics[1].replace("_"," ")
-        fig_title = f"{metric_x} vs. {metric_y}"
-        fig.update_layout(xaxis_title=f"{metric_x}", yaxis_title=f"{metric_y}", title={'text': fig_title,'y':0.85,'x':0.5,'xanchor': 'center','yanchor': 'top'})
-        fig.update(layout_coloraxis_showscale=False)
-        dynamic_plots.append(dcc.Graph(id='pareto-graph',figure=fig))
-        fig.write_image("plots/centroids.png")
+    if ps_np.shape[0] != param_data.shape[0]:
+        # Load plot_stores' param data; this will happen on a load config event
+        param_data = plot_store["params_data"]
+        param_names = plot_store["params_names"]
     else:
+        plot_store = {}
+        if ps_np.shape[0] == 0:
+            return plot_store
+
+    plot_store["metrics_data"] = ps_np
+    plot_store["metrics_names"] = metrics
+
+    plot_store["params_data"] = param_data 
+    plot_store["params_names"] = param_names
+
+    plot_store['slider_mins'] = []
+    plot_store['slider_maxs'] = []
+
+    if len(values) != 0:
+        plot_store['sliders'] = values       
+    else:
+        plot_store['sliders'] = []
+
+    for x in range(0, ps_np.shape[1]):
+        plot_store['slider_mins'].append(np.nanmin(ps_np[:,x]))
+        plot_store['slider_maxs'].append(np.nanmax(ps_np[:,x]))
+        if len(values) == 0:
+            plot_store['sliders'].append([np.nanmin(ps_np[:,x]),np.nanmax(ps_np[:,x])])
+
+    return plot_store
+
+@callback(
+    Output('scatterplot', 'figure'),
+    Output('pareto-table', 'columns'),
+    Output('pareto-table', 'data'),
+    Output('x_axis_dropdown', 'options'),
+    Output('x_axis_dropdown', 'value'),
+    Output('y_axis_dropdown', 'options'),
+    Output('y_axis_dropdown', 'value'),
+    Output('histogramBlock', 'children'),
+    Output('config-search-space-raw', 'data'),
+    Output('config-search-space-filtered', 'data'),
+    Input('plot-store', 'data'),
+    Input('x_axis_dropdown', 'value'),
+    Input('y_axis_dropdown', 'value'),
+    Input('run-datetime-store', 'data'),
+)
+def update_graph(plot_store, x_axis, y_axis, run_datetime):
+
+    process = subprocess.Popen(['pgrep', '-f', 'run_local_job'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = process.communicate()
+
+    if plot_store == {} or len(out) != 0:
+        raise PreventUpdate
+
+    if x_axis is None:
+        # If more than 2 metrics are being optimized, add a PCA view
+        if len(plot_store['metrics_names']) >= 3:
+            x_axis = 'PCA 0'
+            x_axis_default = 'PCA 0'
+        else:
+            x_axis_default = plot_store['metrics_names'][0]
+            x_axis = plot_store['metrics_names'][0]
+    else:
+        x_axis_default = x_axis
+
+    if y_axis is None:
+        # If more than 2 metrics are being optimized, add a PCA view
+        if len(plot_store['metrics_names']) >= 3:
+            y_axis = 'PCA 1'
+            y_axis_default = 'PCA 1'
+        else:
+            y_axis_default = plot_store['metrics_names'][1]
+            y_axis = plot_store['metrics_names'][1]
+    else:
+        y_axis_default = y_axis
+
+    ps_metrics = np.stack(plot_store['metrics_data'])
+    ps_params = np.stack(plot_store['params_data'])
+
+    if ps_metrics.shape[0] != ps_params.shape[0]:
+        raise PreventUpdate  
+
+    # If more than 2 metrics are being optimized, add a PCA view
+    if len(plot_store['metrics_names']) >= 3:
+
         pca = PCA(n_components=2)
-        pca_features = pca.fit_transform(ps_np)
+        pca_features = pca.fit_transform(ps_metrics)
 
-        clusters = list(clusters)
-        clusters = [str(x) for x in clusters]
-        clusters = [x.replace(x, cluster_names[int(x)]) for x in clusters]
-        clusters = np.asarray(clusters)
+        ps_np = np.concatenate((ps_metrics,ps_params, pca_features), axis=1)
+        ps_names = plot_store['metrics_names'] + plot_store['params_names']
+        ps_names.append("PCA 0")
+        ps_names.append("PCA 1")
 
-        # Make centroids a little bigger than the other points
-        size = np.zeros([len(clusters)])
-        size[:]= 1
-        for centroid in closest:
-            size[centroid] = 5
+    else:
 
-        df_np = np.column_stack([clusters, size, pca_features])
-        df = pd.DataFrame(df_np, columns=['clusters','size', 'PCA 0', 'PCA 1']) 
-        df = df.astype({'clusters': str, 'size':float, 'PCA 0': float, 'PCA 1': float})
+        ps_np = np.concatenate((ps_metrics,ps_params), axis=1)
+        ps_names = plot_store['metrics_names'] + plot_store['params_names']
 
-        fig = px.scatter(df, x='PCA 0', y='PCA 1', color='clusters', size='size', title="Automatic", category_orders={'clusters': np.sort(df['clusters'].unique())})
-        fig.update_layout(xaxis_title=f"PCA 0", yaxis_title=f"PCA 1", title={'text': 'PCA Summarized Pareto Front','y':0.85,'x':0.5,'xanchor': 'center','yanchor': 'top'})
-        dynamic_plots.append(dcc.Graph(id='pareto-graph',figure=fig))
-        fig.write_image("plots/centroids.png")
+    # ps_np1 is the nonfiltered results, but only includes the metrics in addition to a bool indicating if filtered
+    ps_np1 = np.zeros((ps_metrics.shape[0], ps_metrics.shape[1]+1))
+    ps_np1[:,:ps_metrics.shape[1]] = ps_metrics
 
-    summary_store["param_names"] = param_names
-    summary_store["param_data"] = param_data
-    summary_store["closest"] = closest
-    summary_store["cluster_names"] = cluster_names
-    summary_store["metrics_data"] = ps_np
-    summary_store["metrics_names"] = viz_metrics
-    
-    return dynamic_plots, cluster_table, summary_store, cluster_names,  cluster_names[0], cluster_names, cluster_names[1]
+    # ps_raw is the raw pareto front results with all parameters & metrics, including PCA
+    ps_raw = ps_np
 
+    for x in range(0,ps_metrics.shape[1]):
+        ps_np1[ps_np1[:, x] < plot_store['sliders'][x][0], ps_metrics.shape[1]] = True
+        ps_np1[ps_np1[:, x] > plot_store['sliders'][x][1], ps_metrics.shape[1]] = True
+        ps_np = ps_np[ps_np[:,x] >= plot_store['sliders'][x][0]]
+        ps_np = ps_np[ps_np[:,x] <= plot_store['sliders'][x][1]]
+
+    # ps_np is the filtered pareto front results with the filtered parameters and metrics, including PCA
+    df = pd.DataFrame(data    = ps_np,  
+                      columns = ps_names)
+
+    df2 = pd.DataFrame(data    = ps_np1,  
+                       columns = plot_store['metrics_names'] + ["Filtered"])
+
+
+    df2['Filtered'] = df2['Filtered'].astype('bool')
+
+    scatter = px.scatter(df, x=x_axis, y=y_axis)
+    #scatter.update_layout(title={'text' : "Configuration Search Space", 'x':0.5, 'xanchor': 'center'})
+    #scatter.update_xaxes(range=[plot_store['slider_mins'][0], plot_store['slider_maxs'][0]])
+    #scatter.update_yaxes(range=[plot_store['slider_mins'][0], plot_store['slider_maxs'][0]])
+    scatter.update_traces(marker=dict(color='black'))
+
+    columns = [{"name": i, "id": i} for i in df.columns]
+    data = df.to_dict("records")
+
+    x_axis_options = plot_store['params_names'] + plot_store['metrics_names']
+    y_axis_options = plot_store['params_names'] + plot_store['metrics_names']
+
+    # If more than 2 metrics are being optimized, add a PCA view
+    if len(plot_store['metrics_names']) >= 3:
+        x_axis_options.append("PCA 0")
+        y_axis_options.append("PCA 1")
+
+    histogramBlock = []
+    for x in range(0,len(plot_store['metrics_names'])):
+
+        figure = px.histogram(df2, x=plot_store['metrics_names'][x], color='Filtered', color_discrete_map={True: "red", False: "black"})
+        title = plot_store['metrics_names'][x]
+        figure.update_layout(title={'text' : f'{title} Distribution', 'x':0.5, 'xanchor': 'center'})
+        graph = dcc.Graph(figure=figure, config={'displayModeBar': False, 'staticPlot': True})
+
+        graph_save_location = os.path.dirname(os.path.realpath(__file__)).rstrip("pages") + "runs/" + run_datetime["run_datetime"] + "/plots/"
+        if figure['data'][0]['x'].any():
+           pio.write_image(figure, graph_save_location + "histogram_" + str(x) + '.png')
+
+        min_val = plot_store['slider_mins'][x] - (plot_store['slider_mins'][x] * 0.01)
+        max_val = plot_store['slider_maxs'][x] + (plot_store['slider_maxs'][x] * 0.01)
+        slider = dcc.RangeSlider(min_val, max_val, value=plot_store['sliders'][x], marks={min_val:f'{min_val:.2f}',max_val:f'{max_val:.2f}'}, id={"type":'metric-slider', "index":x})
+        histogramBlock.append(
+            html.Div(
+                children=[graph, html.Div(slider, style={'padding-left': '55px', 'padding-right': '55px', 'padding-top': '25px'})],
+                style={'display': 'inline-block', 'width': '45%', 'padding': '10px'}
+            )
+        )
+
+    return scatter, columns, data, x_axis_options, x_axis_default, y_axis_options, y_axis_default, histogramBlock, ps_raw, ps_np
 
 @callback(
-    [Output('analysis_col_1', 'children'),
-     Output('analysis_col_2', 'children')],
-    [Input('summary-store', 'data'),
-     Input('experiments-store', 'data'),
-     Input('dropdown_col_1', 'value'),
-     Input('dropdown_col_2', 'value')],
+    Output('cart-store', 'data', allow_duplicate=True),
+    Output('pareto-table', 'selected_rows', allow_duplicate=True),
+    Output('filtered-table-store', 'data'),
+    Input('scatterplot', 'selectedData'),
+    Input('pareto-table', 'selected_rows'),
+    Input('pareto-table', 'data'),
+    State('cart-store', 'data'),
+    State('plot-store', 'data'),
+    State('filtered-table-store', 'data'),
     prevent_initial_call=True,
 )
-def update_analysis_cols(summary_store, experiments_store, dropdown_1, dropdown_2):
+def update_graph(selected_data, filtered_selection, filtered_table_data, cart_store, full_table_data, filtered_table_store ):
+    if (cart_store == {}):
+        cart_store['configs'] = []
+        cart_store['metrics'] = []
+        return cart_store, [], []
 
-    ac_col_1_dropdown = generate_pdf_report(summary_store, experiments_store, dropdown_1, 'DECISION_Summary_Report_1.pdf')
+    # Ensure the metrics for the selected configurations are stored in the cart store; used as ground truth in case the order changes
+    cart_store['metrics'] = [ full_table_data['metrics_data'][idx] for idx in cart_store['configs']]
 
-    ac_col_2_dropdown = generate_pdf_report(summary_store, experiments_store, dropdown_2, 'DECISION_Summary_Report_2.pdf')
+    # Create a reference list of the metrics currently shown in the table
+    filtered_table_metrics = [[filtered_table_data[idx][name] for name in full_table_data['metrics_names']] for idx, value in enumerate(filtered_table_data)]
 
-    return ac_col_1_dropdown, ac_col_2_dropdown
+    # If the order of the list changed, or if the list was filtered, only select the configurations that remain and ensure
+    # that you have the correct index of the selected configurations on the filtered list
+    if filtered_table_data != filtered_table_store:
+        selected_filtered_indices_full_table = []
+        selected_filtered_metrics_full_table = []
+        selected_filtered_indices_filtered_table = []
+        for idx, metric_set in enumerate(cart_store['metrics']):
+            index = next((i for i, values in enumerate(filtered_table_metrics) if values == metric_set), None)
+            if index is not None:
+                selected_filtered_indices_full_table.append(cart_store['configs'][idx])
+                selected_filtered_metrics_full_table.append(metric_set)
+                selected_filtered_indices_filtered_table.append(index)
+        cart_store['configs'] = selected_filtered_indices_full_table
+        cart_store['metrics'] = selected_filtered_metrics_full_table
+        filtered_selection = selected_filtered_indices_filtered_table
+        return cart_store, filtered_selection, filtered_table_data
 
+    # If an item was unchecked, remove it
+    if len(cart_store['configs']) > len(filtered_selection):
+        selected_filtered_metrics = [ filtered_table_metrics[idx] for idx in filtered_selection]
+        selected_indices_full_table = []
+        selected_metrics_full_table = []
+        for idx, metric in enumerate(cart_store['metrics']):
+            if metric in selected_filtered_metrics:
+                selected_indices_full_table.append(cart_store['configs'][idx])
+                selected_metrics_full_table.append(metric)
+        cart_store['metrics'] = selected_metrics_full_table
+        cart_store['configs'] = selected_indices_full_table
+
+    # Check if any new selections exist from the configuration search space. Add these to the full table list
+    if selected_data is not None:
+        for point in selected_data['points']:
+            full_table_index = next((i for i, values in enumerate(full_table_data['metrics_data']) if values == filtered_table_metrics[point['pointIndex']]), None)
+            if full_table_index not in cart_store['configs']:
+                cart_store['configs'].append(full_table_index)
+                cart_store['metrics'].append(full_table_data['metrics_data'][full_table_index])
+
+    # Add new items that were checked
+    if filtered_selection is not None:
+        for filtered_index in filtered_selection:
+            if filtered_table_metrics[filtered_index] not in cart_store['metrics']:
+                full_table_index = next((i for i, values in enumerate(full_table_data['metrics_data']) if values == filtered_table_metrics[filtered_index]), None)
+                cart_store['configs'].append(full_table_index)
+                cart_store['metrics'].append(full_table_data['metrics_data'][full_table_index])
+
+    ### Check the checkbox on all of the configurations that have been selected
+    filtered_index_list = []
+    for metric in cart_store['metrics']:
+        index = next((i for i, values in enumerate(filtered_table_metrics) if values == metric), None)
+        if index is not None:
+            filtered_index_list.append(index)
+
+    return cart_store, filtered_index_list, filtered_table_data
 
 @callback(
-    Output("download-button-1", "data"),
-    [Input("button-1", "n_clicks")],
+    Output('cart-store', 'data', allow_duplicate=True),
+    Output('cart-store-loader', 'data', allow_duplicate=True),
+    Input('cart-store-loader', 'data'),
     prevent_initial_call=True,
 )
-def download_selected_config_1(n_clicks):
-
-    input_file = "DECISION_Summary_Report_1.pdf"
-    output_file = "DECISION_Summary_Report.pdf"
-    shutil.copy(input_file, output_file)
-    return send_file(output_file)
-
-
-@callback(
-    Output("download-button-2", "data"),
-    Input("button-2", "n_clicks"),
-    prevent_initial_call=True,
-)
-def download_selected_config_2(n_clicks):
-
-    input_file = "DECISION_Summary_Report_2.pdf"
-    output_file = "DECISION_Summary_Report.pdf"
-    shutil.copy(input_file, output_file)
-    return send_file(output_file)
-
-
-
-
-
-
+def load_cart_store(cart_store_loader):
+    if not cart_store_loader['loaded']:
+        cart_store_loader['loaded'] = True
+        return cart_store_loader, cart_store_loader

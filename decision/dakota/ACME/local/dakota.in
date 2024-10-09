@@ -1,0 +1,52 @@
+# Template for eventual Dakota input file: dakota.in
+
+environment
+  tabular_data
+    tabular_data_file = 'dakota_data.dat'
+
+method
+  moga
+    max_iterations = 10
+    max_function_evaluations = 10000
+    seed = 11011011
+    population_size = 50
+    fitness_type domination_count  # domination_count is recommended
+    mutation_type replace_uniform  # MOGA's default is replace_uniform
+    mutation_rate 0.08
+    crossover_type shuffle_random  # Simplest is shuffle_random
+      crossover_rate 0.8
+
+model
+  single
+
+variables
+  continuous_design = 2
+    descriptors       'sigma'   'sigma_ratio'
+    lower_bounds         1         1.1
+    upper_bounds         5         5
+
+  discrete_design_range = 7
+    descriptors       'center_x'   'window_x'   'window_y'   'denoise_x'   'minimum_filtered_threshold'   'minimum_post_convolution_snr'   'minimum_peak_volume'
+    lower_bounds         11         111         7         31         0         5         0
+    upper_bounds         171         201         21         151         100         15         1500
+
+interface
+  system
+  analysis_drivers = 'acme_docker_trigger.sh'  # Script to execute input conversion (dprepro), ACME run/eval, and output conversion
+  parameters_file = 'dakota_params.in'  
+  results_file     = 'dakota_results.out'
+  work_directory named 'trials/trial'  # Create subdirs per evaluation
+        directory_save
+        directory_tag
+        copy_files = 'dakota/ACME/acme_config.template' 'dakota/ACME/acme_output_writer.py' 'dakota/ACME/local/acme_docker_trigger.sh'
+        replace
+
+
+responses 
+  objective_functions = 2
+    descriptors = 'Maximize_Recall'
+                'Maximize_Precision'
+    sense = 'max'
+          'max'
+  no_gradients
+  no_hessians

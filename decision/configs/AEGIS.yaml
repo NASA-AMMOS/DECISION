@@ -1,0 +1,68 @@
+metrics:
+  default:
+    - 'Maximize Intersection over Union'
+    - 'Minimize Runtime'
+  all:
+    - 'Maximize Intersection over Union'
+    - 'Minimize Runtime'
+  description:
+    - "Intersection over the Union measures how accurately a model detects or segments an object in an image compared to the ground truth. Maximizing the Intersection over the Union will maximize the overlap of the prediction with the ground truth."
+    - "Runtime is the time it takes to complete a task or process. Minimizing runtime will result in a faster prediction algorithm."
+parameters:
+  - block:
+    name: "AEGIS Parameters"
+    description: "Parameters for selecting rocks of interest"
+    parameters:
+        -
+          name: "Smooth Window"
+          variable_name: "smooth_window"
+          description: "A larger smoothing value can help improve the overall segmentation quality in terrain types with extensive fine-scale texture by limiting the computational complexity resulting from too many edges."
+          min_range: 0
+          max_range: 6
+          min_default: 0
+          max_default: 6
+          type: "range"
+          step: 1
+        -
+          name: "Sky Sigma Threshold"
+          variable_name: "sky_sigma_threshold"
+          description: "Standard deviation of the pixel values in a region of the image that is free of sources."
+          min_range: 0
+          max_range: 1
+          min_default: 0
+          max_default: 1
+          type: "range"
+          step: 0.1
+        -
+          name: "High Threshold"
+          variable_name: "hi_threshold"
+          description: "Upper bound of grid search."
+          min_range: 0.5
+          max_range: 24.5
+          min_default: 0.5
+          max_default: 24.5
+          type: "range"
+          step: 0.5
+        -
+          name: "Low Threshold"
+          variable_name: "lo_threshold"
+          description: "Lower bound of grid search."
+          min_range: 0.4
+          max_range: 9.4
+          min_default: 0.4
+          max_default: 9.4
+          type: "range"
+          step: 0.2
+        -
+          name: "Gap Threshold"
+          variable_name: "gap_threshold"
+          description: "A gap-filling mechanism joining nearby contour fragments whose endpoints lie within a predefined radius."
+          min_range: 0.5
+          max_range: 50.5
+          min_default: 0.5
+          max_default: 50.5
+          type: "range"
+          step: 0.5
+data:
+  label_extension: "txt"
+  data_extension: "pgm"

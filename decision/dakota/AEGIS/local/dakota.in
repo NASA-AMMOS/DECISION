@@ -1,0 +1,52 @@
+# Template for eventual Dakota input file: dakota.in
+
+environment
+  tabular_data
+    tabular_data_file = 'dakota_data.dat'
+
+method
+  moga
+    max_iterations = 10
+    max_function_evaluations = 10000
+    seed = 11011011
+    population_size = 50
+    fitness_type domination_count  # domination_count is recommended
+    mutation_type replace_uniform  # MOGA's default is replace_uniform
+    mutation_rate 0.08
+    crossover_type shuffle_random  # Simplest is shuffle_random
+      crossover_rate 0.8
+
+model
+  single
+
+variables
+  continuous_design = 4
+    descriptors       'sky_sigma_threshold'   'hi_threshold'   'lo_threshold'   'gap_threshold'
+    lower_bounds         0         0.5         0.4         0.5
+    upper_bounds         1         24.5         9.4         50.5
+
+  discrete_design_range = 1
+    descriptors       'smooth_window'
+    lower_bounds         0
+    upper_bounds         6
+
+interface
+  system
+  analysis_drivers = 'aegis_trigger.sh'  # Script to execute input conversion (dprepro), ACME run/eval, and output conversion
+  parameters_file = 'dakota_params.in'  
+  results_file     = 'dakota_results.out'
+  work_directory named 'trials/trial'  # Create subdirs per evaluation
+        directory_save
+        directory_tag
+        copy_files = 'dakota/AEGIS/aegis_config.template' 'dakota/AEGIS/aegis_output_writer.py' 'dakota/AEGIS/local/aegis_trigger.sh'
+        replace
+
+
+responses 
+  objective_functions = 2
+    descriptors = 'Maximize_Intersection_over_Union'
+                'Minimize_Runtime'
+    sense = 'max'
+          'min'
+  no_gradients
+  no_hessians
